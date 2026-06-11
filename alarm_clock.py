@@ -37,6 +37,9 @@ C = {
     "flower_dark":  (120,  20,  30),   # dark crimson after abuse
     "stem":         (60,  140,  50),
     "stem_dark":    (30,   60,  20),
+    # romance
+    "pink":         (255, 150, 200),
+    "deep_pink":    (210,  60, 130),
 }
 
 # ── Sound ─────────────────────────────────────────────────────────────────────
@@ -69,7 +72,8 @@ SFX={}
 for k,a in [('alarm',(880,300,'square',0.4)),('click',(600,60,'sine',0.2)),
             ('smack',(120,180,'noise',0.5)),('ouch',(300,350,'sine',0.3)),
             ('type',(440,35,'sine',0.08)),('beep',(880,150,'square',0.3)),
-            ('boss_hit',(90,280,'noise',0.55))]:
+            ('boss_hit',(90,280,'noise',0.55)),
+            ('blush',(660,120,'sine',0.15))]:   # little rising tone for flustered Tick
     SFX[k]=mksnd(*a)
 for k,a in [('happy',([523,659,784],350,0.2)),('sad',([392,466,523],500,0.2)),
             ('boss_atk',([220,277,330],400,0.35)),('win',([523,659,784,1046],700,0.25)),
@@ -224,7 +228,7 @@ def draw_bg(kind, tick, abuse=0):
 
 # ── Clock ─────────────────────────────────────────────────────────────────────
 def draw_clock(surf,cx,cy,sz,hp_ratio=1.0,expr="neutral",
-               shake=0,angry=False,glow=False,tick=0):
+               shake=0,angry=False,glow=False,tick=0,sunglasses=False):
     ox=random.randint(-shake,shake) if shake else 0
     oy=random.randint(-shake,shake) if shake else 0
     x,y=cx+ox,cy+oy
@@ -259,7 +263,20 @@ def draw_clock(surf,cx,cy,sz,hp_ratio=1.0,expr="neutral",
     hnd(ha,fr*0.5,4,C["dark_gray"]); hnd(ma,fr*0.7,3,C["dark_gray"])
     hnd(sa,fr*0.8,1,C["accent"]); pygame.draw.circle(surf,C["dark_gray"],(x,y),5)
     ey=y-sz//5; ew=sz//7
-    if expr=="happy":
+    if sunglasses:
+        # Cool shades override all expressions
+        sw=int(sz*0.45); sh=int(sz*0.22)
+        for exi in (x-sz//3,x+sz//3):
+            pygame.draw.rect(surf,(20,20,20),(exi-sw//2,ey-sh//2,sw,sh),border_radius=4)
+            pygame.draw.rect(surf,(80,80,200),(exi-sw//2,ey-sh//2,sw,sh),2,border_radius=4)
+        pygame.draw.line(surf,(80,80,200),(x-sz//3+sw//2,ey),(x+sz//3-sw//2,ey),2)
+    elif state.get("tick_dizzy",0)>0:
+        # Dizzy spiral eyes (title easter egg)
+        for exi in (x-sz//3,x+sz//3):
+            for r2 in range(ew//2,0,-3):
+                a2=r2*0.8; ec=(int(200*r2/(ew//2)),int(100*r2/(ew//2)),200)
+                pygame.draw.circle(surf,ec,(exi,ey),r2,1)
+    elif expr=="happy":
         pygame.draw.arc(surf,C["dark_gray"],(x-sz//3-ew//2,ey,ew,ew//2),math.pi,0,3)
         pygame.draw.arc(surf,C["dark_gray"],(x+sz//3-ew//2,ey,ew,ew//2),math.pi,0,3)
     elif expr=="angry":
@@ -275,6 +292,16 @@ def draw_clock(surf,cx,cy,sz,hp_ratio=1.0,expr="neutral",
         pygame.draw.ellipse(surf,C["dark_gray"],(x-sz//3-ew//2,ey,ew,ew//2))
         pygame.draw.ellipse(surf,C["dark_gray"],(x+sz//3-ew//2,ey,ew,ew//2))
         pygame.draw.line(surf,C["dark_gray"],(x-sz//3-ew//4,ey-ew//3),(x-sz//3+ew//4,ey-ew//4),2)
+    elif expr=="blush":
+        # Wide surprised eyes + rosy cheeks
+        for ex2 in (x-sz//3,x+sz//3):
+            pygame.draw.ellipse(surf,C["white"],(ex2-ew//2,ey-ew//4,ew,int(ew*1.1)))
+            pygame.draw.ellipse(surf,(80,60,180),(ex2-ew//4,ey,ew//2,ew//2))
+        # rosy cheek patches
+        for ex2 in (x-sz//3,x+sz//3):
+            bsurf=pygame.Surface((ew+4,ew//2+4),pygame.SRCALPHA)
+            pygame.draw.ellipse(bsurf,(255,100,140,100),(0,0,ew+4,ew//2+4))
+            surf.blit(bsurf,(ex2-ew//2-2,ey+ew//2))
     else:
         pygame.draw.ellipse(surf,C["dark_gray"],(x-sz//3-ew//2,ey-ew//4,ew,int(ew*0.8)))
         pygame.draw.ellipse(surf,C["dark_gray"],(x+sz//3-ew//2,ey-ew//4,ew,int(ew*0.8)))
@@ -285,6 +312,11 @@ def draw_clock(surf,cx,cy,sz,hp_ratio=1.0,expr="neutral",
         pygame.draw.rect(surf,C["white"],(x-sz//8,my2+sz//16,sz//4,sz//12))
     elif expr=="scared": pygame.draw.ellipse(surf,C["dark_gray"],(x-sz//8,my2,sz//4,sz//5))
     elif expr=="smug": pygame.draw.arc(surf,C["dark_gray"],(x,my2,sz//3,sz//5),math.pi,0,3)
+    elif expr=="blush":
+        # wiggly nervous smile
+        pygame.draw.arc(surf,C["dark_gray"],(x-sz//5,my2-sz//14,sz//2,sz//6),math.pi,0,3)
+        # little sweat drop
+        pygame.draw.circle(surf,(100,180,255),(x+sz//4,my2-sz//8),4)
     else: pygame.draw.line(surf,C["dark_gray"],(x-sz//5,my2+sz//10),(x+sz//5,my2+sz//10),2)
     bell_c=lc(C["gold"],C["clock_evil"],1-hp_ratio)
     for bx2,by2,br in [(x-sz//2,y-sz,sz//4),(x+sz//2,y-sz,sz//4)]:
@@ -373,11 +405,74 @@ class InputBox:
             cx2=self.rect.x+12+F_MED.size(self.text)[0]+2
             pygame.draw.line(surf,C["text_light"],(cx2,self.rect.y+8),(cx2,self.rect.bottom-8),2)
 
-# ── Game state ────────────────────────────────────────────────────────────────
+# ── Choice Box (branching dialogue) ───────────────────────────────────────────
+class ChoiceBox:
+    def __init__(self):
+        self.active=False; self.choices=[]; self.cb=None; self.prompt=""
+
+    def start(self,prompt,choices,cb):
+        """choices: list of (label, kindness_delta) tuples"""
+        self.active=True; self.prompt=prompt; self.choices=choices; self.cb=cb
+
+    def draw(self,surf):
+        if not self.active: return
+        bx,by,bw,bh=80,H-310,W-160,280
+        panel(surf,bx,by,bw,bh,(10,8,30,240),16)
+        pygame.draw.rect(surf,C["gold"],(bx,by,bw,bh),2,border_radius=16)
+        txt(surf,"TICK",F_SM,C["gold"],bx+20,by+16,"midleft")
+        wrap(surf,self.prompt,F_MED,C["text_light"],bx+18,by+38,bw-36,28)
+        mx2,my2=pygame.mouse.get_pos()
+        for i,(label,_) in enumerate(self.choices):
+            cx2=bx+18+i*(bw//len(self.choices))
+            cy2=by+bh-64
+            cw=bw//len(self.choices)-12
+            r=pygame.Rect(cx2,cy2,cw,44)
+            hv=r.collidepoint(mx2,my2)
+            btn(surf,label,cx2,cy2,cw,44,hv,
+                (80,60,140) if hv else (50,40,100))
+        txt(surf,"Choose your response:",F_TINY,C["gray"],bx+bw//2,by+bh-78,"center")
+
+    def click(self,mx,my,surf=None):
+        if not self.active: return False
+        bx,by,bw,bh=80,H-310,W-160,280
+        for i,(label,kd) in enumerate(self.choices):
+            cx2=bx+18+i*(bw//len(self.choices))
+            cy2=by+bh-64
+            cw=bw//len(self.choices)-12
+            r=pygame.Rect(cx2,cy2,cw,44)
+            if r.collidepoint(mx,my):
+                self.active=False
+                state["kindness"]=max(-4,min(4,state["kindness"]+kd))
+                play('click')
+                if self.cb: self.cb(i,label,kd)
+                return True
+        return False
+
+choices_box=ChoiceBox()
+
+
 state={
     "player_name":"Player","player_age":17,"day":1,
     "clock_hp":100,"abuse_count":0,"scene":"title","tick":0,
+    "kindness":0,          # -4 to +4 from choices on days 3,5,7,9
+    "romance":0,           # 0-5: flirt meter with Tick
+    "boss_surrendered":False,
+    "spam_smack":0,        # easter egg: spam smack counter
+    "tick_dizzy":0,        # easter egg: title triple-click
+    "sunglasses":False,    # easter egg: konami code
+    "silent_mode":False,   # easter egg: spammed smack 10x
+    "title_clicks":0,      # easter egg: triple-click on title clock
+    "title_click_timer":0, # timer to reset triple-click
+    "konami_idx":0,        # konami code progress
+    "secret_word":"",      # for "tick" secret word easter egg
+    "choice_pending":False,# is a choice dialogue active?
+    "pending_choice_day":0,
 }
+
+KONAMI=[pygame.K_UP,pygame.K_UP,pygame.K_DOWN,pygame.K_DOWN,
+        pygame.K_LEFT,pygame.K_RIGHT,pygame.K_LEFT,pygame.K_RIGHT,
+        pygame.K_b,pygame.K_a]
+WAKE_EVT=pygame.USEREVENT+1
 dlg=DlgBox()
 name_box=InputBox(W//2-220,200,440,50,"Enter your name…")
 age_box =InputBox(W//2-220,300,440,50,"Enter your age (numbers only)…")
@@ -385,25 +480,26 @@ name_box.focused=True   # name box starts focused
 
 # ── Day data ──────────────────────────────────────────────────────────────────
 DAY_META={
-    1: ("Day 1 – Just Another Morning",  "morning","neutral",False),
-    2: ("Day 2 – Wait, Did You Just…?",  "morning","neutral",False),
-    3: ("Day 3 – Getting Weird",         "morning","happy",  True),
-    4: ("Day 4 – You and Tick",          "morning","happy",  True),
-    5: ("Day 5 – The Bad Day",           "evening","smug",   True),
-    6: ("Day 6 – The First Strike",      "morning","scared", True),
-    7: ("Day 7 – Escalation",            "evening","angry",  True),
-    8: ("Day 8 – Cold War",              "night",  "angry",  True),
-    9: ("Day 9 – The Warning",           "night",  "angry",  False),
-    10:("Day 10 – THE RECKONING",        "boss",   "angry",  False),
+    1: ("Day 1 – Just Another Morning",  "morning","neutral",False,False),
+    2: ("Day 2 – Wait, Did You Just…?",  "morning","neutral",False,False),
+    3: ("Day 3 – Getting Weird",         "morning","happy",  True, False),
+    4: ("Day 4 – You and Tick",          "morning","happy",  True, True),
+    5: ("Day 5 – The Bad Day",           "evening","smug",   True, True),
+    6: ("Day 6 – The First Strike",      "morning","scared", True, True),
+    7: ("Day 7 – Escalation",            "evening","angry",  True, True),
+    8: ("Day 8 – Cold War",              "night",  "angry",  True, True),
+    9: ("Day 9 – The Warning",           "night",  "angry",  False,False),
+    10:("Day 10 – THE RECKONING",        "boss",   "angry",  False,False),
 }
 
 def day_script(day,name):
     N,T,P="Narrator","TICK",name
     scripts={
         1:[(N,"Your alarm goes off at 6:30 AM. Beep. Beep. Beep. Same as always."),
-           (N,"You drag yourself to school. Nothing unusual… except you find a bizarre device in the science corridor."),
-           (N,"It reads: 'Hear what was never meant to be heard.'"),
-           (N,"Without thinking much, you pocket it. You come home, eat cereal, set your alarm. Normal."),
+           (N,"You drag yourself to school. Nothing unusual… except you find a bizarre object in the science corridor."),
+           (N,"Oh! It's an ultra-rare building block."),
+           (N,"Most intriguing."),
+           (N,"Without thinking much, you pocket it. Then, you come home, eat dinner, and set your alarm. As per normalormal."),
            (N,"You fall asleep. The clock ticks quietly in the dark…")],
         2:[(T,"BEEP BEEP BEEP— Oh. You're awake. FINALLY. Do you know how long I've been sitting here?"),
            (P,"…What."),
@@ -413,14 +509,12 @@ def day_script(day,name):
            (N,"You go to school in a complete daze. The whole day passes in a blur."),
            (T,"Are you going to set me or just GAWK at me all night? I don't get paid for this."),
            (N,"You shove a pillow over the clock. It muffles what sounds distinctly like: 'RUDE.'")],
-        3:[(T,"Good MORNING, sunshine! Rise and— ugh. You look like expired yoghurt."),
-           (P,"HOW are you talking? What even ARE you?"),
+        3:[(N,"Good MORNING, sunshine! Rise and— ugh. You look like expired yoghurt."),
            (T,"I am your alarm clock. Your timekeeper. Your personal herald of suffering every 6:30 AM. You're welcome."),
            (P,"Do you… have a name?"),
            (T,"…Nobody's ever asked me that before. You can call me Tick."),
-           (P,"Tick. That's… actually kind of cute."),
-           (T,"Say that again and I will ring at 3 AM every night for the rest of your life."),
-           (N,"There's a warmth to Tick's voice though. Even through the threats.")],
+           (T,"That's… actually— wait. Are you being nice to me? Why are you being nice to me?"),
+           ("CHOICE","day3")],  # sentinel for choice trigger
         4:[(T,"Morning! I've been wondering — do you actually LIKE mornings or just tolerate them in quiet despair?"),
            (P,"Tolerate. Why are you always so chipper?"),
            (T,"I am a clock. Time is my entire EXISTENCE. Every second is precious. Unlike SOME people who hit snooze four times."),
@@ -431,27 +525,23 @@ def day_script(day,name):
         5:[(P,"I failed my computing test. 23 out of 100. TWENTY. THREE."),
            (T,"Wow. That's… historically terrible. That's a museum-worthy fail."),
            (P,"SHUT UP, TICK."),
-           (T,"I'm just saying — even I can count better and I only have 12 numbers to work with."),
-           (P,"I will UNPLUG you."),
-           (T,"You'll oversleep! You NEED me. Just admit it. Go on. SAY it."),
-           (P,"I hate you so much right now."),
-           (T,"Mutual, bestie. Now go do your homework. You've got ground to recover.")],
+           (T,"Okay, okay. For what it's worth — do you want advice, or do you want someone to just listen?"),
+           ("CHOICE","day5")],
         6:[(N,"6:30 AM. BEEP BEEP BEEP—"),
-           (N,"Your hand descends. Not to press snooze. Not to silence it gently. To SLAM."),
+           (N,"Your hand descends... Just not to press snooze. Nor to silence it gently. But to SLAM."),
+           (N, "Confusion floods Tick's face, and it's gaze on you immediately transitions into that of hurt, pain, and confusion."),
            (T,"OW! What was— OW! That HURT! What is WRONG with you?!"),
            (P,"I— I was half asleep, I didn't mean—"),
            (T,"HALF ASLEEP! I am FLINCHING. Do clocks flinch?! I'm flinching RIGHT NOW."),
-           (P,"Tick, I'm sorry—"),
-           (T,"It's fine. It's FINE. I'm fine. Totally fine. Just… maybe warn me. Next time."),
-           (N,"There's a crack on Tick's face now. Barely visible. But there.")],
+           (T,"So what do you have to say for yourself?"),
+           ("CHOICE","day6")],
         7:[(T,"You slammed me again this morning. THREE TIMES."),
            (P,"Okay, mornings are genuinely hard—"),
            (T,"Hard?! I wake up at the crack of dawn EVERY day for YOUR benefit and this is how you repay me?!"),
            (P,"You're an alarm clock!"),
            (T,"I AM A SENTIENT BEING WITH FEELINGS AND A PREMIUM SNOOZE FUNCTION."),
-           (P,"Okay, OKAY, calm—"),
-           (T,"DON'T tell me to calm down. I have been timing your chaos for seven days. I have RECEIPTS."),
-           (N,"Something has shifted. Tick's eyes glow redder. The ticking sounds like a war drum.")],
+           (T,"Do you even feel bad about any of this?"),
+           ("CHOICE","day7")],
         8:[(T,"…"),
            (P,"You're not talking to me?"),
            (T,"I'm simply doing my job. Tick. Tick. Tick."),
@@ -466,8 +556,8 @@ def day_script(day,name):
            (T,"Tomorrow. 6:30 AM. We settle this. Every slam. Every pillow. Every 'shut up Tick.' ALL of it."),
            (P,"Are you… threatening me?"),
            (T,"I'm a clock. I don't threaten. I SCHEDULE."),
-           (N,"You cannot sleep. The ticking feels like a countdown."),
-           (P,"(What have I done…)")],
+           (T,"Is there anything you want to say to me? Before tomorrow?"),
+           ("CHOICE","day9")],
         10:[(T,"BEEP BEEP BEEP BEEP BEEP BEEP—"),
             (N,"The room SHAKES. Tick rises off the nightstand."),
             (T,f"TEN DAYS, {name}. TEN DAYS OF THIS. NO MORE."),
@@ -487,6 +577,34 @@ ABUSE_LINES=[
     "One more slam and I ring at 2 AM. I MEAN IT.",
     "Every. Single. Time. WHY.",
     "You know what? You deserve every alarm.",
+]
+
+# Tick's flustered responses, indexed by romance level (0-5)
+FLIRT_LINES=[
+    # romance 0 – first flirt, pure confusion
+    ["I— what? That was not on the schedule.",
+     "ERROR. Sentiment not found in database.",
+     "I am a clock. I do not know what to do with… whatever that was."],
+    # romance 1 – mildly flustered
+    ["My gears are spinning faster than usual and I don't think it's the alarm.",
+     "That is— I— please stop. Or don't. I'm confused.",
+     "You're doing this on purpose. I know you are. Stop it."],
+    # romance 2 – clearly affected
+    ["My hands are literally spinning. You did this.",
+     "If I could blush I would ABSOLUTELY be blushing right now.",
+     "This is extremely unprofessional and I'm here for it."],
+    # romance 3 – smitten
+    ["I wake you up every morning and you CHOOSE to make it worse like THIS?",
+     "Fine. FINE. You're tolerable. I said it. Happy?",
+     "I may have been counting down to 6:30 AM for reasons unrelated to my function."],
+    # romance 4 – deeply in denial
+    ["I have been a clock for many years and nothing has prepared me for YOU.",
+     "Please stop. My mechanisms cannot handle this. They are SPINNING.",
+     "I hate you. I hate you so much. Please never stop."],
+    # romance 5 – gone completely
+    ["I— you— I'm going to ring at 3 AM. Not as a threat. Just to see you again.",
+     "Every second I've ever counted has been building to this. I'm normal about it.",
+     "I think I love you. Please don't tell the other clocks."],
 ]
 
 BOSS_ATKS=[
@@ -513,11 +631,16 @@ class Boss:
             dmg=random.randint(14,24)+(8 if self.chp<0.5 else 0)
             msg=f"You SMACK Tick square in the face for {dmg} damage!"
             play('smack'); burst(self.cx,self.cy,C["accent"],15,5); self.shake=8
+            state["spam_smack"]+=1
+            if state["spam_smack"]>=10 and not state["silent_mode"]:
+                state["silent_mode"]=True
+                self._log("TICK","…I have nothing left to say to you.")
         elif move=="apologise":
             heal=random.randint(8,16); self.php=min(100,self.php+heal)
             dmg=random.randint(5,12)
             msg=f"You apologise sincerely. Tick is confused (-{dmg} HP). You heal +{heal}!"
             play('happy')
+            state["spam_smack"]=0  # reset smack streak
         elif move=="unplug":
             if random.random()<0.38:
                 dmg=random.randint(28,44)
@@ -536,6 +659,35 @@ class Boss:
                 self.php=max(0,self.php-15)
                 msg="You doze off! Tick takes full advantage… -15 HP!"
                 play('ouch'); self.flash=18
+        elif move=="surrender":
+            # Secret pacifist / best-friend ending trigger
+            state["boss_surrendered"]=True
+            self._log("YOU","You drop your hands and say: 'I'm sorry, Tick. I give up. You were right.'")
+            self._log("TICK","…")
+            self.phase="win"
+            play('happy'); burst(self.cx,self.cy,C["gold"],30,7)
+            return
+        elif move=="confess":
+            if state["romance"]>=3:
+                # Tick skips his turn, flustered
+                self._log("YOU","You look Tick dead in the eye and say: 'I have feelings for you.'")
+                self._log("TICK","I— my gears— I need a MOMENT—")
+                play('blush')
+                burst(self.cx,self.cy,C["pink"],22,5)
+                burst(self.cx,self.cy,C["deep_pink"],10,3)
+                self.shake=4
+                # skip clock's turn (stays player turn)
+                self.turn="player"
+            else:
+                # Tick is confused and attacks harder
+                self._log("YOU","You nervously confess feelings for a clock.")
+                self._log("TICK","I— WHAT?! You're DELIRIOUS. Take that! (-extra dmg)")
+                dmg2=random.randint(18,28)
+                self.php=max(0,self.php-dmg2)
+                play('boss_atk'); self.flash=25
+                if self.php<=0: self.phase="lose"; play('evil')
+                else: self.turn="player"
+            return
         self.chp=max(0.,self.chp-dmg/100)
         self._log("YOU",msg)
         if self.chp<=0: self.phase="win"; play('win'); burst(self.cx,self.cy,C["gold"],30,7)
@@ -569,26 +721,35 @@ class Boss:
             fl.fill((210,40,40,min(110,self.flash*5))); surf.blit(fl,(0,0))
         expr="angry" if self.chp>0.3 else "scared"
         draw_clock(surf,self.cx,self.cy,90,hp_ratio=self.chp,angry=True,
-                   shake=self.shake,expr=expr,glow=True,tick=self.tick)
+                   shake=self.shake,expr=expr,glow=True,tick=self.tick,
+                   sunglasses=state["sunglasses"])
         txt(surf,"TICK",F_MED,C["accent"],W//2,95,"center")
         hp_bar(surf,W//2-200,110,400,28,self.chp,"TICK HP",C["accent"])
         txt(surf,state["player_name"].upper(),F_MED,C["green"],W//2,H-305,"center")
         hp_bar(surf,W//2-200,H-290,400,28,self.php/100,"YOUR HP",C["green"])
+        # Kindness meter
+        k=state["kindness"]; kcol=C["green"] if k>0 else C["red"] if k<0 else C["gray"]
+        txt(surf,f"❤ Kindness: {'+' if k>0 else ''}{k}",F_TINY,kcol,W-110,140,"center")
         panel(surf,30,H-255,W-60,160,(10,8,30,205),10)
         for i,(spk,msg) in enumerate(self.log[-5:]):
             sc2=C["accent"] if spk=="TICK" else C["green"]
+            # Silent mode: Tick just shows "…"
+            disp_msg=msg if spk!="TICK" or not state["silent_mode"] else "…"
             txt(surf,f"[{spk}]",F_TINY,sc2,44,H-248+i*27,"topleft")
-            wrap(surf,msg,F_TINY,C["text_light"],108,H-248+i*27,W-148,27)
+            wrap(surf,disp_msg,F_TINY,C["text_light"],108,H-248+i*27,W-148,27)
         if self.turn=="player" and self.phase=="fight":
             moves=[("SMACK","smack",(155,38,38),(195,65,65)),
                    ("APOLOGISE","apologise",(35,95,155),(65,135,195)),
                    ("UNPLUG","unplug",(115,78,0),(165,128,0)),
-                   ("SNOOZE","snooze",(55,95,55),(85,145,85))]
+                   ("SNOOZE","snooze",(55,95,55),(85,145,85)),
+                   ("SURRENDER","surrender",(80,40,120),(120,70,170)),
+                   ("💕 CONFESS","confess",(130,40,100),(180,60,140))]
             mx2,my2=pygame.mouse.get_pos()
+            bw2=136; gap=6; total=len(moves)*(bw2+gap)-gap; sx=(W-total)//2
             for i,(label,_,nc,hc) in enumerate(moves):
-                bx2=20+i*202; by2=H-90; bw2,bh2=190,44
-                hv=pygame.Rect(bx2,by2,bw2,bh2).collidepoint(mx2,my2)
-                btn(surf,label,bx2,by2,bw2,bh2,hv,hc if hv else nc)
+                bx2=sx+i*(bw2+gap); by2=H-90
+                hv=pygame.Rect(bx2,by2,bw2,44).collidepoint(mx2,my2)
+                btn(surf,label,bx2,by2,bw2,44,hv,hc if hv else nc)
         elif self.turn=="clock" and self.phase=="fight":
             txt(surf,"TICK IS THINKING…  ⚡",F_MED,C["accent"],W//2,H-65,"center")
 
@@ -598,12 +759,22 @@ boss=None
 def draw_title(tk):
     draw_bg("night",tk,0)
     bob=math.sin(tk*0.03)*9
-    draw_clock(screen,W//2,215+bob,72,expr="smug",glow=True,tick=tk)
+    dizzy=state.get("tick_dizzy",0)>0
+    if dizzy: state["tick_dizzy"]-=1
+    draw_clock(screen,W//2,215+bob,72,expr="smug",glow=True,tick=tk,
+               sunglasses=state.get("sunglasses",False))
     txt(screen,"ALARM CLOCK:",F_TITLE,C["gold"],W//2,345,"center")
     txt(screen,"THE AWAKENING",F_TITLE,C["accent"],W//2,397,"center")
     txt(screen,"10 days.  One clock.  Zero peace.",F_MED,C["gray"],W//2,438,"center")
     if (tk//30)%2:
         txt(screen,"▼  Click anywhere to begin  ▼",F_SM,C["purple"],W//2,490,"center")
+    # Easter egg: sunglasses hint
+    if state.get("sunglasses"):
+        txt(screen,"😎  Cool mode activated  😎",F_TINY,C["gold"],W//2,535,"center")
+    # Secret word easter egg: show "tick" typed
+    sw=state.get("secret_word","")
+    if sw:
+        txt(screen,sw,F_TINY,(100,100,200),W-50,H-20,"midright")
 
 def draw_intro(tk):
     draw_bg("night",tk,0)
@@ -633,7 +804,10 @@ def draw_intro(tk):
 
 def draw_day(day,tk,phase):
     meta=DAY_META.get(day,DAY_META[1])
-    title_s,bg,clock_expr,can_smack=meta
+    title_s,bg,clock_expr,can_smack,can_flirt=meta
+    # Romance level warps Tick's expression to blush if high enough
+    if state["romance"]>=3 and clock_expr in ("happy","neutral","smug"):
+        clock_expr="blush"
     draw_bg(bg,tk,state["abuse_count"])
     panel(screen,0,0,W,56,(8,6,25,210))
     txt(screen,title_s,F_MED,C["gold"],W//2,28,"center")
@@ -645,22 +819,34 @@ def draw_day(day,tk,phase):
         col=C["gold"] if d<day else C["dark_gray"]
         pygame.draw.circle(screen,col,(cx2,72),8)
         txt(screen,str(d+1),F_TINY,C["black"] if d<day else C["text_light"],cx2,72)
-    smack_rect=None
-    if can_smack and not dlg.active and phase==1:
-        mx2,my2=pygame.mouse.get_pos()
-        sr2=pygame.Rect(W-192,H-92,170,46)
-        hv=sr2.collidepoint(mx2,my2)
-        btn(screen,"😤  SMACK TICK",sr2.x,sr2.y,sr2.w,sr2.h,hv,
-            (195,60,60) if hv else (155,40,40))
-        txt(screen,f"Clock HP: {state['clock_hp']}%",F_TINY,C["gray"],W-107,H-102,"center")
-        smack_rect=sr2
+    # Romance meter (small hearts top-right)
+    if state["romance"]>0:
+        for hi in range(state["romance"]):
+            hx=W-20-hi*18; hy=72
+            pygame.draw.circle(screen,C["pink"],(hx,hy),6)
+            pygame.draw.circle(screen,C["deep_pink"],(hx,hy),6,1)
+        txt(screen,"💕",F_TINY,C["pink"],W-20-state["romance"]*18-18,72)
+    smack_rect=None; flirt_rect=None
     if phase==1 and not dlg.active:
         mx2,my2=pygame.mouse.get_pos()
+        # Layout: sleep left, smack right, flirt centre-right if available
         sl=pygame.Rect(30,H-92,195,46)
         hv=sl.collidepoint(mx2,my2)
-        btn(screen,"💤  Go to Sleep",sl.x,sl.y,sl.w,sl.h,hv,
-            (55,85,145) if hv else (38,60,105))
-    return smack_rect
+        btn(screen,"💤  Go to Sleep",sl.x,sl.y,sl.w,sl.h,hv,(55,85,145) if hv else (38,60,105))
+        if can_smack:
+            sr2=pygame.Rect(W-192,H-92,170,46)
+            hv2=sr2.collidepoint(mx2,my2)
+            btn(screen,"😤  SMACK TICK",sr2.x,sr2.y,sr2.w,sr2.h,hv2,
+                (195,60,60) if hv2 else (155,40,40))
+            txt(screen,f"Clock HP: {state['clock_hp']}%",F_TINY,C["gray"],W-107,H-102,"center")
+            smack_rect=sr2
+        if can_flirt:
+            fr2=pygame.Rect(W//2-95,H-92,190,46)
+            hv3=fr2.collidepoint(mx2,my2)
+            fc=(180,60,120) if hv3 else (130,40,90)
+            btn(screen,"💕  FLIRT WITH TICK",fr2.x,fr2.y,fr2.w,fr2.h,hv3,fc)
+            flirt_rect=fr2
+    return smack_rect,flirt_rect
 
 def draw_sleep(tk):
     draw_bg("night",tk,state["abuse_count"])
@@ -672,39 +858,226 @@ def draw_boss_bg(tk):
     draw_bg("boss",tk,state["abuse_count"])
     txt(screen,"☠   FINAL RECKONING   ☠",F_BIG,C["accent"],W//2,38,"center")
 
+def _ending_type():
+    """Determine which ending the player gets."""
+    k=state["kindness"]; sur=state["boss_surrendered"]
+    rom=state["romance"]; ab=state["abuse_count"]
+    adult=state["player_age"]>=18
+    # Age-gated endings first
+    if adult and rom>=5 and k>=1:       return "love"          # max devotion + kind
+    if adult and ab>=20 and rom>=2:     return "masochist"     # high abuse + kept flirting
+    if rom>=3 and not sur:              return "romance"       # confessed love + beat boss
+    if sur and k>=2:                    return "bestfriends"   # max kindness + surrender
+    if sur:                             return "pacifist"      # surrender, average kindness
+    if k>=2:                            return "good"          # beat boss + kind
+    if k<=-2:                           return "bittersweet"   # beat boss + cruel
+    return "default"                                           # standard win
+
 def draw_win(tk):
-    # Morning sky behind everything
+    etype=_ending_type()
     draw_bg("morning",tk,state["abuse_count"])
-    # Large centred card
-    card_x,card_y,card_w,card_h = W//2-340,30,680,590
+    card_x,card_y,card_w,card_h=W//2-340,30,680,590
     panel(screen,card_x,card_y,card_w,card_h,(8,6,25,235),20)
-    pygame.draw.rect(screen,C["gold"],(card_x,card_y,card_w,card_h),2,border_radius=20)
-    txt(screen,"🏆  YOU WIN!  🏆",F_BIG,C["gold"],W//2,70,"center")
-    draw_clock(screen,W//2,195,68,hp_ratio=0.12,expr="scared",tick=tk)
     pname=state["player_name"]
-    story_lines=[
-        ("Tick collapses, clock hands spinning uselessly.",C["text_light"]),
-        ("It lets out one last tiny… *beep.*",            C["text_light"]),
-        ("And somehow, you feel terrible.",               C["text_light"]),
-        ("",C["text_light"]),
-        ("It was just trying to help you wake up.",       C["text_light"]),
-        ("Every day. Without fail. For years.",           C["text_light"]),
-        ("And you…",                                      C["text_light"]),
-        ("",C["text_light"]),
-        (f"You sit there, {pname}, and cry a little.",   C["gold"]),
-        ("Maybe tomorrow you'll set it more gently.",    C["text_light"]),
-        ("",C["text_light"]),
-        ("✨  GOOD ENDING  ✨",                           C["gold"]),
-        ("",C["text_light"]),
-        ("[Press  R  to play again]",                    C["purple"]),
-    ]
-    for i,(line,col) in enumerate(story_lines):
-        txt(screen,line,F_SM,col,W//2,316+i*24,"center")
+
+    if etype=="love":
+        # Deep red-pink gradient
+        for y2 in range(H): pygame.draw.line(screen,lc((255,80,140),(120,30,90),y2/H),(0,y2),(W,y2))
+        draw_stars(screen)
+        draw_flowers(screen,0,tk)
+        pygame.draw.rect(screen,C["deep_pink"],(card_x,card_y,card_w,card_h),3,border_radius=20)
+        txt(screen,"❤  TRUE LOVE ENDING  ❤",F_BIG,C["pink"],W//2,70,"center")
+        bob3=math.sin(tk*0.04)*14
+        draw_clock(screen,W//2,188+bob3,68,hp_ratio=1.0,expr="blush",glow=True,tick=tk,
+                   sunglasses=False)
+        # Heart orbit
+        for hi in range(8):
+            hx=W//2+int(math.cos(tk*0.025+hi*0.785)*200)
+            hy=195+int(math.sin(tk*0.04+hi*0.785)*70)
+            ha=abs(math.sin(tk*0.035+hi))
+            hc=lc(C["deep_pink"],C["pink"],ha)
+            pygame.draw.circle(screen,hc,(hx,hy),int(4+ha*6))
+        lines=[
+            ("Tick is very still. That's how you know it's serious.",C["text_light"]),
+            ("The clock hands aren't spinning. They're pointing straight at you.",C["pink"]),
+            ("",C["text_light"]),
+            (f"'I need to tell you something, {pname}.'",C["pink"]),
+            ("'Every morning I ring for you — not because that's my function.'",C["pink"]),
+            ("'Because it means I get to hear your voice. Even if it's cursing.'",C["pink"]),
+            ("",C["text_light"]),
+            ("You don't say anything. You don't need to.",C["text_light"]),
+            ("You reach out and hold the clock very carefully.",C["text_light"]),
+            ("",C["text_light"]),
+            ("Tick's gears go completely silent for the first time in years.",C["text_light"]),
+            ("Then, very softly: '…You're going to make me run fast.'",C["pink"]),
+            ("",C["text_light"]),
+            ("❤  TRUE LOVE ENDING — Against all logic. Worth it.  ❤",C["deep_pink"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    elif etype=="masochist":
+        # Chaotic red-purple gradient
+        for y2 in range(H): pygame.draw.line(screen,lc((80,0,60),(30,0,80),y2/H),(0,y2),(W,y2))
+        draw_stars(screen)
+        draw_flowers(screen,99,tk)  # dark withered flowers
+        pygame.draw.rect(screen,C["purple"],(card_x,card_y,card_w,card_h),3,border_radius=20)
+        txt(screen,"😈  MASOCHIST ENDING  😈",F_BIG,C["purple"],W//2,70,"center")
+        bob4=math.sin(tk*0.06)*7+math.cos(tk*0.11)*5  # jittery bob
+        draw_clock(screen,W//2,192+bob4,68,hp_ratio=0.6,expr="smug",glow=True,tick=tk)
+        lines=[
+            (f"You smacked Tick {state['abuse_count']} times.",C["accent"]),
+            ("And flirted with them between every single one.",C["text_light"]),
+            ("",C["text_light"]),
+            ("'You know,' Tick says after a long pause,",C["text_light"]),
+            ("'most humans pick ONE approach. Abuse OR affection.'",C["purple"]),
+            ("'You somehow managed both. Every. Single. Day.'",C["purple"]),
+            ("",C["text_light"]),
+            ("'I should be furious. I should be traumatised.'",C["text_light"]),
+            ("'And yet…'",C["purple"]),
+            ("",C["text_light"]),
+            ("Tick's voice drops to something disturbingly fond:",C["text_light"]),
+            ("'…Ring again tomorrow?'",C["deep_pink"]),
+            ("",C["text_light"]),
+            ("😈  MASOCHIST ENDING — Chaotic. Unhinged. Somehow mutual.  😈",C["purple"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    elif etype=="romance":
+        # Pink gradient sky for romance ending
+        for y2 in range(H): pygame.draw.line(screen,lc((255,150,200),(180,100,220),y2/H),(0,y2),(W,y2))
+        draw_stars(screen)
+        draw_flowers(screen,0,tk)  # full bloom
+        pygame.draw.rect(screen,C["deep_pink"],(card_x,card_y,card_w,card_h),2,border_radius=20)
+        txt(screen,"💕  CLOCKMANCE ENDING  💕",F_BIG,C["deep_pink"],W//2,70,"center")
+        # Tick is blushing, floating, completely smitten
+        bob2=math.sin(tk*0.04)*12
+        draw_clock(screen,W//2,190+bob2,68,hp_ratio=0.9,expr="blush",glow=True,tick=tk)
+        # Floating hearts
+        for hi in range(6):
+            hx=W//2+int(math.cos(tk*0.03+hi*1.05)*180)
+            hy=200+int(math.sin(tk*0.05+hi*0.8)*60)
+            ha=abs(math.sin(tk*0.04+hi))
+            hc=lc(C["pink"],C["deep_pink"],ha)
+            pygame.draw.circle(screen,hc,(hx,hy),int(5+ha*4))
+        lines=[
+            ("Tick's clock hands have been spinning faster all day.",C["text_light"]),
+            ("Not because of the time. Because of you.",C["pink"]),
+            ("",C["text_light"]),
+            ("After everything — the smacking, the shouting, the pillow incidents —",C["text_light"]),
+            ("you look at a sentient alarm clock and think: 'yeah, that one.'",C["text_light"]),
+            ("",C["text_light"]),
+            (f"Tick's voice is very quiet: '{pname}… I've been",C["pink"]),
+            ("counting every second since I met you. That's my whole job.",C["pink"]),
+            ("But I'd count them even if it wasn't.'",C["pink"]),
+            ("",C["text_light"]),
+            ("You set the alarm for 6:30 AM.",C["text_light"]),
+            ("For the first time in ten days, you can't wait to hear it.",C["text_light"]),
+            ("",C["text_light"]),
+            ("💕  CLOCKMANCE ENDING — Somehow, this is your life now.  💕",C["deep_pink"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    elif etype=="bestfriends":
+        pygame.draw.rect(screen,C["gold"],(card_x,card_y,card_w,card_h),2,border_radius=20)
+        txt(screen,"🌟  BEST FRIENDS ENDING  🌟",F_BIG,C["gold"],W//2,70,"center")
+        draw_clock(screen,W//2,190,68,hp_ratio=0.8,expr="happy",tick=tk,sunglasses=True)
+        lines=[
+            ("You lay down your hands. 'I'm sorry, Tick. You were right.'",C["text_light"]),
+            ("A long silence. Then, the softest beep you've ever heard.",C["text_light"]),
+            ("",C["text_light"]),
+            ("Tick floats back to the nightstand. Slowly. Carefully.",C["text_light"]),
+            ("'…You know,' Tick says, 'you're not the worst human I've woken up.'",C["gold"]),
+            ("'That is literally the nicest thing you've said to me.',",C["text_light"]),
+            ("'Don't push it.'",C["gold"]),
+            ("",C["text_light"]),
+            (f"From that day forward, {pname} woke up on the first ring.",C["text_light"]),
+            ("Not because they had to. Because they wanted to.",C["text_light"]),
+            ("",C["text_light"]),
+            ("✨  TRUE ENDING — The clock has a friend now.  ✨",C["gold"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    elif etype=="pacifist":
+        pygame.draw.rect(screen,C["green"],(card_x,card_y,card_w,card_h),2,border_radius=20)
+        txt(screen,"🕊  PACIFIST ENDING  🕊",F_BIG,C["green"],W//2,70,"center")
+        draw_clock(screen,W//2,190,68,hp_ratio=0.6,expr="neutral",tick=tk)
+        lines=[
+            ("You surrender. Just like that.",C["text_light"]),
+            ("Tick stops mid-swing. Confused.",C["text_light"]),
+            ("",C["text_light"]),
+            ("'You're giving up? Just… giving up?'",C["gold"]),
+            (f"'{pname}: I'm tired of fighting you. You just wanted to help.'",C["text_light"]),
+            ("Another silence. The longest one yet.",C["text_light"]),
+            ("",C["text_light"]),
+            ("'…Okay,' Tick says quietly. 'Okay.'",C["gold"]),
+            ("The beeping slows. For the first time, it sounds almost gentle.",C["text_light"]),
+            ("",C["text_light"]),
+            ("🕊  PACIFIST ENDING — No winners. No losers. Just peace.  🕊",C["green"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    elif etype=="good":
+        pygame.draw.rect(screen,C["gold"],(card_x,card_y,card_w,card_h),2,border_radius=20)
+        txt(screen,"🏆  YOU WIN!  🏆",F_BIG,C["gold"],W//2,70,"center")
+        draw_clock(screen,W//2,195,68,hp_ratio=0.12,expr="scared",tick=tk)
+        lines=[
+            ("Tick collapses, clock hands spinning uselessly.",C["text_light"]),
+            ("It lets out one last tiny… *beep.*",C["text_light"]),
+            ("And somehow, you feel terrible.",C["text_light"]),
+            ("",C["text_light"]),
+            ("It was just trying to help you wake up.",C["text_light"]),
+            ("Every day. Without fail. For years.",C["text_light"]),
+            ("",C["text_light"]),
+            (f"You sit there, {pname}, and cry a little.",C["gold"]),
+            ("Maybe tomorrow you'll set it more gently.",C["text_light"]),
+            ("",C["text_light"]),
+            ("✨  GOOD ENDING  ✨",C["gold"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    elif etype=="bittersweet":
+        pygame.draw.rect(screen,C["red"],(card_x,card_y,card_w,card_h),2,border_radius=20)
+        txt(screen,"⚔  HOLLOW VICTORY  ⚔",F_BIG,C["accent"],W//2,70,"center")
+        draw_clock(screen,W//2,195,68,hp_ratio=0.05,expr="neutral",tick=tk)
+        lines=[
+            ("Tick shatters. Not dramatically. Just… quietly.",C["text_light"]),
+            ("The ticking stops for the first time in years.",C["text_light"]),
+            ("",C["text_light"]),
+            ("You stand in the silence.",C["text_light"]),
+            (f"You 'won', {pname}.",C["accent"]),
+            ("You beat the alarm clock. Congratulations.",C["text_light"]),
+            ("",C["text_light"]),
+            ("You buy a new one the next day. It doesn't talk.",C["gray"]),
+            ("You kind of miss it.",C["gray"]),
+            ("",C["text_light"]),
+            ("💔  BITTERSWEET ENDING — You had something rare. You broke it.  💔",C["accent"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+    else:  # default
+        pygame.draw.rect(screen,C["gold"],(card_x,card_y,card_w,card_h),2,border_radius=20)
+        txt(screen,"🏆  YOU WIN!  🏆",F_BIG,C["gold"],W//2,70,"center")
+        draw_clock(screen,W//2,195,68,hp_ratio=0.12,expr="scared",tick=tk)
+        lines=[
+            ("Tick collapses, clock hands spinning uselessly.",C["text_light"]),
+            ("It lets out one last tiny… *beep.*",C["text_light"]),
+            ("And somehow, you feel terrible.",C["text_light"]),
+            ("",C["text_light"]),
+            ("It was just trying to help you wake up.",C["text_light"]),
+            (f"You sit there, {pname}, and wonder.",C["gold"]),
+            ("Maybe next time. Maybe.",C["text_light"]),
+            ("",C["text_light"]),
+            ("✨  STANDARD ENDING  ✨",C["gold"]),
+            ("",C["text_light"]),
+            ("[Press  R  to play again]",C["purple"]),
+        ]
+
+    for i,(line,col) in enumerate(lines):
+        txt(screen,line,F_SM,col,W//2,310+i*24,"center")
 
 def draw_lose(tk):
     for y in range(H): pygame.draw.line(screen,lc((38,0,0),(0,0,0),y/H),(0,y),(W,y))
     draw_stars(screen)
-    # angry flowers at the bottom — fully dark red
     draw_flowers(screen,99,tk)
     pulse=88+int(16*math.sin(tk*0.09))
     draw_clock(screen,W//2,H//2-70,pulse,hp_ratio=1.0,angry=True,
@@ -727,7 +1100,7 @@ def draw_lose(tk):
         txt(screen,line,F_MED if i==0 else F_SM,col,W//2,H-212+i*29,"center")
 
 # ── Scene logic ───────────────────────────────────────────────────────────────
-day_phase=0; dlg_script=[]; dlg_idx=0; smack_r=None
+day_phase=0; dlg_script=[]; dlg_idx=0; smack_r=None; flirt_r=None
 sleep_r=pygame.Rect(30,H-92,195,46)
 
 def begin_day(day):
@@ -736,10 +1109,81 @@ def begin_day(day):
     _next_dlg()
 
 def _next_dlg():
-    global dlg_idx,day_phase
-    if dlg_idx>=len(dlg_script): day_phase=1; return
+    global dlg_idx, day_phase
+    if dlg_idx>=len(dlg_script):
+        day_phase=1
+        return
     spk,line=dlg_script[dlg_idx]; dlg_idx+=1
+    # Check for choice sentinel
+    if spk=="CHOICE":
+        _trigger_choice(line)
+        return
     dlg.start([line],spk=spk,cb=_next_dlg)
+
+CHOICE_DATA={
+    "day3":{
+        "prompt":"You named me. Does that mean… you actually care, or was that just something to say?",
+        "opts":[("Of course I care!",+1),("You're just a clock.",0),("Don't push it.",-1)],
+    },
+    "day5":{
+        "prompt":"Look, I know you're upset. But do you actually care about this test, or just your pride?",
+        "opts":[("I care. I'll try harder.",+1),("I just want to vent.",0),("It doesn't matter, drop it.",-1)],
+    },
+    "day6":{
+        "prompt":"I could use a proper apology. Or not. Whatever.",
+        "opts":[("I'm truly sorry, Tick.",+1),("You're cute when angry.",0),("Get over it.",-1)],
+    },
+    "day7":{
+        "prompt":"DO YOU FEEL BAD. Yes or no. That's all I'm asking.",
+        "opts":[("Yes. I'm genuinely sorry.",+1),("Kind of? It's complicated.",0),("Not really.",-1)],
+    },
+    "day9":{
+        "prompt":"Is there anything you want to say to me? Before tomorrow?",
+        "opts":[("I'm sorry. For everything.",+2),("I'll face whatever comes.",0),("Bring it on.",-2)],
+    },
+}
+
+def _trigger_choice(key):
+    global day_phase
+    cd=CHOICE_DATA.get(key)
+    if not cd: day_phase=1; return
+    state["choice_pending"]=True
+    state["pending_choice_day"]=key
+    def on_choice(i,label,kd):
+        state["choice_pending"]=False
+        # Special case: "cute when angry" on day 6
+        if key=="day6" and "cute" in label.lower():
+            state["romance"]=min(5,state["romance"]+2)
+            play('blush')
+            burst(W//2,295,C["pink"],18,5)
+            dlg.start(["I— WHAT. That is COMPLETELY— I am MALFUNCTIONING. My face is warm and I don't HAVE a face. What did you DO to me?!"],
+                      spk="TICK",cb=lambda: setattr_and_next())
+            return
+        # Show Tick's reaction
+        reactions_pos=[
+            "…Oh. Well. Noted. Carry on.",
+            "Fair enough. I suppose.",
+            "…Fine. We'll see about that.",
+        ]
+        reactions_neg=[
+            "You know what? Fine. I'll remember that.",
+            "As expected from you.",
+            "I'll add it to the list.",
+        ]
+        reactions_neu=[
+            "Hm. Vague but acceptable.",
+            "Okay. Moving on.",
+            "Right. Whatever that means.",
+        ]
+        if kd>0: r=random.choice(reactions_pos)
+        elif kd<0: r=random.choice(reactions_neg)
+        else: r=random.choice(reactions_neu)
+        dlg.start([r],spk="TICK",cb=lambda: setattr_and_next())
+    def setattr_and_next():
+        global day_phase
+        day_phase=1
+        _next_dlg()
+    choices_box.start(cd["prompt"],cd["opts"],on_choice)
 
 def do_smack():
     state["clock_hp"]=max(0,state["clock_hp"]-random.randint(4,9))
@@ -747,7 +1191,17 @@ def do_smack():
     play('smack'); burst(W//2,295,C["accent"],12,5)
     dlg.start([random.choice(ABUSE_LINES)],spk="TICK")
 
-WAKE_EVT=pygame.USEREVENT+1
+def do_flirt():
+    r=min(5,state["romance"])
+    line=random.choice(FLIRT_LINES[r])
+    state["romance"]=min(5,state["romance"]+1)
+    play('blush')
+    # pink heart burst
+    burst(W//2,295,C["pink"],14,4)
+    burst(W//2,295,C["deep_pink"],6,3)
+    dlg.start([line],spk="TICK")
+
+
 
 def go_sleep():
     global day_phase
@@ -771,10 +1225,15 @@ def wake_up():
     else: state["scene"]="day"; begin_day(d)
 
 def reset():
-    global state,dlg,name_box,age_box,boss,day_phase,dlg_script,dlg_idx,pts
+    global state,dlg,name_box,age_box,boss,day_phase,dlg_script,dlg_idx,pts,choices_box
     state={"player_name":"Player","player_age":17,"day":1,
-           "clock_hp":100,"abuse_count":0,"scene":"title","tick":0}
+           "clock_hp":100,"abuse_count":0,"scene":"title","tick":0,
+           "kindness":0,"romance":0,"boss_surrendered":False,
+           "spam_smack":0,"tick_dizzy":0,"sunglasses":False,"silent_mode":False,
+           "title_clicks":0,"title_click_timer":0,"konami_idx":0,"secret_word":"",
+           "choice_pending":False,"pending_choice_day":0}
     dlg=DlgBox()
+    choices_box=ChoiceBox()
     name_box=InputBox(W//2-220,200,440,50,"Enter your name…"); name_box.focused=True
     age_box =InputBox(W//2-220,300,440,50,"Enter your age (numbers only)…")
     boss=None; day_phase=0; dlg_script=[]; dlg_idx=0; pts.clear()
@@ -795,20 +1254,73 @@ while running:
             if ev.key==pygame.K_r and state["scene"] in ("win","lose"):
                 reset(); continue
 
+            # ── Easter egg: Konami code ────────────────────────────────────────
+            expected=KONAMI[state["konami_idx"]]
+            if ev.key==expected:
+                state["konami_idx"]+=1
+                if state["konami_idx"]==len(KONAMI):
+                    state["sunglasses"]=not state["sunglasses"]
+                    state["konami_idx"]=0
+                    play('happy')
+                    burst(W//2,300,C["gold"],30,6)
+            else:
+                state["konami_idx"]=0
+                if ev.key==expected: state["konami_idx"]=1  # partial re-match
+
+            # ── Easter egg: type "tick" on title screen ────────────────────────
+            if state["scene"]=="title" and ev.unicode.isalpha():
+                sw=state["secret_word"]+ev.unicode.lower()
+                sw=sw[-4:]  # keep last 4 chars
+                state["secret_word"]=sw
+                if sw=="tick":
+                    play('alarm')
+                    burst(W//2,215,C["accent"],20,5)
+                    dlg.start(["TICK: Did someone call? I'm not INVISIBLE, you know!"],spk="TICK")
+                    state["secret_word"]=""
+
+            # ── Easter egg: age 0 or 999 on intro ─────────────────────────────
             if state["scene"]=="intro":
-                # TAB switches focus between boxes
+                if ev.key in (pygame.K_SPACE,pygame.K_RETURN):
+                    pass  # handled below
+                else:
+                    name_box.handle(ev); age_box.handle(ev)
+                    try:
+                        age_val=int(age_box.text.strip())
+                        if age_val==0 and not state.get("age_egg_shown"):
+                            state["age_egg_shown"]=True
+                            dlg.start(["TICK: You're ZERO?! You can't even be AWAKE at 6:30!"],spk="TICK")
+                        elif age_val>=999 and not state.get("old_egg_shown"):
+                            state["old_egg_shown"]=True
+                            dlg.start(["TICK: 999 years old and you STILL can't wake up on time?!"],spk="TICK")
+                    except: pass
+
+            if state["scene"]=="intro":
                 if ev.key==pygame.K_TAB:
                     if name_box.focused: name_box.focused=False; age_box.focused=True
                     else: age_box.focused=False; name_box.focused=True
-                else:
-                    name_box.handle(ev); age_box.handle(ev)
+                # skip re-handling since we handled above
+            elif state["scene"]!="title":
+                name_box.handle(ev); age_box.handle(ev)
 
             if ev.key in (pygame.K_SPACE,pygame.K_RETURN):
                 if dlg.active: dlg.advance(); play('click')
 
         if ev.type==pygame.MOUSEBUTTONDOWN and ev.button==1:
             if state["scene"]=="title":
-                state["scene"]="intro"; play('click')
+                # Easter egg: triple-click on Tick himself → dizzy
+                tick_rect=pygame.Rect(W//2-72,143,144,144)
+                if tick_rect.collidepoint(mx,my):
+                    state["title_clicks"]+=1
+                    state["title_click_timer"]=90  # reset timer
+                    if state["title_clicks"]>=3:
+                        state["tick_dizzy"]=180
+                        state["title_clicks"]=0
+                        play('ouch')
+                        burst(W//2,215,C["purple"],18,4)
+                        dlg.start(["Tick: I'm DIZZY. Stop that."],spk="TICK")
+                else:
+                    if not dlg.active:
+                        state["scene"]="intro"; play('click')
 
             elif state["scene"]=="intro":
                 # update focus on click
@@ -821,10 +1333,14 @@ while running:
                     state["scene"]="day"; play('happy'); begin_day(1)
 
             elif state["scene"]=="day":
-                if dlg.active: dlg.advance(); play('click')
+                # Handle choice box first
+                if choices_box.active:
+                    choices_box.click(mx,my); 
+                elif dlg.active: dlg.advance(); play('click')
                 elif day_phase==1:
-                    can=DAY_META.get(state["day"],(None,None,None,False))[3]
+                    can=DAY_META.get(state["day"],(None,None,None,False,False))[3]
                     if smack_r and smack_r.collidepoint(mx,my) and can: do_smack()
+                    if flirt_r and flirt_r.collidepoint(mx,my): do_flirt()
                     if sleep_r.collidepoint(mx,my): go_sleep()
 
             elif state["scene"]=="sleep":
@@ -833,19 +1349,33 @@ while running:
             elif state["scene"]=="boss" and boss:
                 if dlg.active: dlg.advance(); play('click')
                 elif boss.phase=="fight" and boss.turn=="player":
-                    for i,an in enumerate(["smack","apologise","unplug","snooze"]):
-                        if pygame.Rect(20+i*202,H-90,190,44).collidepoint(mx,my):
+                    bw2=136; gap=6; total=6*(bw2+gap)-gap; sx=(W-total)//2
+                    for i,an in enumerate(["smack","apologise","unplug","snooze","surrender","confess"]):
+                        if pygame.Rect(sx+i*(bw2+gap),H-90,bw2,44).collidepoint(mx,my):
                             boss.p_act(an); play('click')
+
+    # ── Easter egg: midnight clock alignment (tick≡0 mod 3600 roughly) ────────
+    if tk%3600==0 and tk>60:
+        burst(W//2,H//2,C["gold"],40,8)
+        burst(W//2,H//2,(200,200,255),20,6)
+        play('win')
+
+    # ── Title click timer decay ────────────────────────────────────────────────
+    if state["title_click_timer"]>0:
+        state["title_click_timer"]-=1
+        if state["title_click_timer"]==0:
+            state["title_clicks"]=0
 
     # ── Draw ──────────────────────────────────────────────────────────────────
     screen.fill(C["bg_night"])
     sc=state["scene"]
 
-    if sc=="title":   draw_title(tk)
+    if sc=="title":   draw_title(tk); dlg.update(); dlg.draw(screen)
     elif sc=="intro": draw_intro(tk)
     elif sc=="day":
-        smack_r=draw_day(state["day"],tk,day_phase)
+        smack_r,flirt_r=draw_day(state["day"],tk,day_phase)
         dlg.update(); dlg.draw(screen); upd_pts(screen)
+        choices_box.draw(screen)
     elif sc=="sleep":
         draw_sleep(tk); dlg.update(); dlg.draw(screen)
         if not dlg.active and day_phase==2:
